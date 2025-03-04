@@ -22,10 +22,7 @@ app.get("/", (req, res) => {
 app.post("/login", async (req, res) => {
   const username = req.body.username;
   const password = req.body.password;
-  const sessionId = crypto
-    .createHash("sha256")
-    .update(username + password)
-    .digest("hex");
+  const sessionId = crypto.randomUUID();
 
   try {
     await prisma.user.create({
