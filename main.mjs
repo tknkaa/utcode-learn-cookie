@@ -1,6 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import crypto from "crypto";
 
 const prisma = new PrismaClient();
@@ -27,12 +27,27 @@ app.post("/login", async (req, res) => {
     .update(username + password)
     .digest("hex");
 
-  await prisma.user.create({
-    data: {
-      username: username,
-      password: password,
-    },
-  });
+  try {
+    await prisma.user.create({
+      data: {
+        username: username,
+        password: password,
+      },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      if (e.code === "P2002") {
+        console.error("Unique constraint failed");
+        res.send(`
+    <p>そのユーザー名はすでに使われています。</p>
+    <a href="/">トップに戻る</a>
+          `);
+        return;
+      }
+    } else {
+      console.error("failed to create user:", e);
+    }
+  }
 
   const user = await prisma.user.findUnique({
     where: {
@@ -46,7 +61,6 @@ app.post("/login", async (req, res) => {
       userId: user.id,
     },
   });
-
   res.cookie("session", sessionId);
   res.send(`
     <p>ようこそ！${username}さん！</p>
